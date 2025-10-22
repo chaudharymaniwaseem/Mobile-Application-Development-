@@ -1,95 +1,216 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Dimensions, Modal, Animated } from 'react-native';
-iimport GlobalStyles, { Colors, Spacing } from '../styles/GlobalStyles';
-const { width, height } = Dimensions.get('window');
-const isMobile = width < 768;
+import React, { useState, useRef } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  ImageBackground,
+  Alert,
+  RefreshControl,
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import RoomCard from '../components/RoomCard';
+import SearchBar from '../components/SearchBar';
+import CustomHeader from '../components/CustomHeader';
+import { hotelData } from '../data/hotelData';
+import { styles } from '../styles';
 
-const HomeScreen = ({ navigation }) => {
-  // ... existing state and data ...
+const HomeScreen = () => {
+  const navigation = useNavigation();
+  const [featuredRooms, setFeaturedRooms] = useState(hotelData.rooms);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [user] = useState({
+    name: 'Manahil',
+    avatar: '👑'
+  });
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 2000);
+  };
+
+  const handleBookRoom = (room) => {
+    if (!room.available) {
+      Alert.alert(
+        'Room Not Available',
+        'This room is currently booked. Please choose another room.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Room Selected',
+      `You've selected the ${room.type}. Proceed to booking?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Continue', 
+          onPress: () => navigation.navigate('Book')
+        }
+      ]
+    );
+  };
+
+  const handleSearch = (query) => {
+    if (query === '') {
+      setFeaturedRooms(hotelData.rooms);
+    } else {
+      const filtered = hotelData.rooms.filter(room =>
+        room.type.toLowerCase().includes(query.toLowerCase()) ||
+        room.description.toLowerCase().includes(query.toLowerCase()) ||
+        room.features.some(feature => feature.toLowerCase().includes(query.toLowerCase()))
+      );
+      setFeaturedRooms(filtered);
+    }
+  };
 
   return (
-    <View style={GlobalStyles.container}>
-      <View style={styles.customHeader}>
-        {/* ... header content ... */}
-      </View>
-
-      <ScrollView style={GlobalStyles.scrollContainer} showsVerticalScrollIndicator={false}>
-        {/* Main Banner */}
-        <View style={styles.bannerContainer}>
-          <Image
-            source={require('../assets/images/main-banner.jpg')}
-            style={GlobalStyles.image}
-            resizeMode="cover"
+    <View style={styles.screen}>
+      <CustomHeader user={user} />
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#2b6cb0']}
           />
-        </View>
+        }
+      >
+        {/* Hero Section */}
+        <ImageBackground
+          source={{ uri: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80' }}
+          style={styles.heroSection}
+          imageStyle={styles.heroImage}
+        >
+          <View style={styles.heroOverlay}>
+            <Text style={styles.welcomeText}>Welcome back, {user.name}! 👋</Text>
+            <Text style={styles.heroTitle}>Royal Suites</Text>
+            <Text style={styles.heroSubtitle}>Experience Unmatched Luxury & Comfort</Text>
+            <TouchableOpacity 
+              style={styles.ctaButton}
+              onPress={() => navigation.navigate('Book')}
+            >
+              <Text style={styles.ctaText}>Book Your Stay</Text>
+            </TouchableOpacity>
+          </View>
+        </ImageBackground>
 
-        {/* Categories Grid */}
-        <View style={GlobalStyles.gridContainer}>
-          <Text style={Typography.sectionTitle}>Shop Categories</Text>
-          <View style={GlobalStyles.grid}>
-            {categories.map((category) => (
-              <TouchableOpacity
-                key={category.id}
-                style={[styles.categoryCard, { borderLeftColor: category.color }]}
-                onPress={() => navigation.navigate(category.screen)}
-              >
-                <Image source={category.image} style={GlobalStyles.categoryImage} resizeMode="cover" />
-                <View style={styles.categoryOverlay}>
-                  <Text style={styles.categoryName}>{category.name}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+        {/* Quick Stats */}
+        <View style={styles.statsSection}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>4.8</Text>
+            <Text style={styles.statLabel}>Guest Rating</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>78%</Text>
+            <Text style={styles.statLabel}>Occupancy</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>24/7</Text>
+            <Text style={styles.statLabel}>Service</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>120+</Text>
+            <Text style={styles.statLabel}>Rooms</Text>
           </View>
         </View>
 
-        {/* ... rest of the components ... */}
+        {/* Search Bar */}
+        <View style={styles.section}>
+          <SearchBar 
+            placeholder="Search rooms, amenities..."
+            onSearch={handleSearch}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+          />
+        </View>
+
+        {/* Featured Rooms */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Featured Rooms</Text>
+            <TouchableOpacity>
+              <Text style={styles.seeAllText}>See All</Text>
+            </TouchableOpacity>
+          </View>
+          {featuredRooms.map((room, index) => (
+            <RoomCard
+              key={room.id}
+              room={room}
+              onBook={handleBookRoom}
+              index={index}
+            />
+          ))}
+        </View>
+
+        {/* Special Offers */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Special Offers</Text>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            style={styles.offersCarousel}
+          >
+            <View style={styles.offerCard}>
+              <View style={styles.offerBadge}>
+                <Text style={styles.offerBadgeText}>25% OFF</Text>
+              </View>
+              <Text style={styles.offerTitle}>Weekend Getaway</Text>
+              <Text style={styles.offerDesc}>Book 2 nights, get the 3rd night free!</Text>
+              <Text style={styles.offerCode}>Code: WEEKEND25</Text>
+            </View>
+            
+            <View style={styles.offerCard}>
+              <View style={[styles.offerBadge, styles.offerBadgePremium]}>
+                <Text style={styles.offerBadgeText}>PREMIUM</Text>
+              </View>
+              <Text style={styles.offerTitle}>Luxury Package</Text>
+              <Text style={styles.offerDesc}>Free spa treatment with suite booking</Text>
+              <Text style={styles.offerCode}>Code: LUXURYSPA</Text>
+            </View>
+          </ScrollView>
+        </View>
+
+        {/* Hotel Features */}
+        <View style={styles.featuresSection}>
+          <Text style={styles.sectionTitle}>Why Choose Royal Suites?</Text>
+          <View style={styles.featuresGrid}>
+            <View style={styles.featureItem}>
+              <Text style={styles.featureIcon}>⭐</Text>
+              <Text style={styles.featureTitle}>5-Star Service</Text>
+              <Text style={styles.featureDesc}>Exceptional hospitality</Text>
+            </View>
+            <View style={styles.featureItem}>
+              <Text style={styles.featureIcon}>🏊</Text>
+              <Text style={styles.featureTitle}>Premium Amenities</Text>
+              <Text style={styles.featureDesc}>Pool, spa & more</Text>
+            </View>
+            <View style={styles.featureItem}>
+              <Text style={styles.featureIcon}>📍</Text>
+              <Text style={styles.featureTitle}>Prime Location</Text>
+              <Text style={styles.featureDesc}>City center access</Text>
+            </View>
+            <View style={styles.featureItem}>
+              <Text style={styles.featureIcon}>🛎️</Text>
+              <Text style={styles.featureTitle}>24/7 Support</Text>
+              <Text style={styles.featureDesc}>Always here to help</Text>
+            </View>
+          </View>
+        </View>
       </ScrollView>
+      
+      {/* Floating Action Button */}
+      <TouchableOpacity 
+        style={styles.fab}
+        onPress={() => navigation.navigate('Book')}
+      >
+        <Text style={styles.fabIcon}>🏨</Text>
+      </TouchableOpacity>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  customHeader: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: Spacing.container,
-    paddingVertical: isMobile ? 15 : 20,
-    paddingTop: isMobile ? 35 : 25,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
-  },
-  bannerContainer: {
-    height: isMobile ? 300 : 500,
-    position: 'relative',
-    marginBottom: 10,
-  },
-  categoryCard: {
-    width: isMobile ? (width - 50) / 2 : (width - 90) / 4,
-    height: isMobile ? 180 : 250,
-    marginBottom: 15,
-    borderRadius: BorderRadius.large,
-    overflow: 'hidden',
-    position: 'relative',
-    borderLeftWidth: 4,
-    ...Shadows.small,
-  },
-  categoryOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: Colors.overlayLight,
-    padding: isMobile ? 10 : 15,
-  },
-  categoryName: {
-    color: Colors.white,
-    fontSize: isMobile ? 13 : 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  // ... other component-specific styles ...
-});
 
 export default HomeScreen;
